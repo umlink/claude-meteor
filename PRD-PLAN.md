@@ -280,7 +280,7 @@ Claude Code ──POST /v1/messages──► axum handler
 
 网关提供「一键对接」功能：
 
-1. 自动检测 `~/.claude/settings.local.json` 中是否已配置 `ANTHROPIC_BASE_URL`
+1. 自动检测 `~/.claude/settings.json` 中是否已配置 `ANTHROPIC_BASE_URL`
 2. 提供一键写入：将 `ANTHROPIC_BASE_URL=http://127.0.0.1:9876` 写入 settings
 3. 提供一键还原：移除自定义配置，恢复默认
 4. 启动时检测：若网关已启动但 Claude Code 未指向本地代理，UI 提示用户
@@ -419,7 +419,7 @@ CREATE TABLE providers (
 | WebView 引擎              | WKWebView（系统自带）                                        | WebView2（需引导安装）                             | WebKitGTK（需系统安装）                   | Windows 上 Tauri 安装器自动引导 WebView2 Bootstrapper；Linux 文档注明依赖 |
 | 数据目录                    | `~/Library/Application Support/claude-dynamic-meteor/` | `%APPDATA%/claude-dynamic-meteor/`          | `~/.config/claude-dynamic-meteor/` | 使用 `dirs` crate 的 `data_dir()` 统一获取                        |
 | SQLite 路径               | 同数据目录下 `meteor.db`                                     | 同数据目录下 `meteor.db`                          | 同数据目录下 `meteor.db`                 | `rusqlite` bundled 模式确保三平台一致                               |
-| Claude Code settings 路径 | `~/.claude/settings.local.json`                        | `%USERPROFILE%\.claude\settings.local.json` | `~/.claude/settings.local.json`    | 使用 `dirs::home_dir()` + `.claude` 拼接                       |
+| Claude Code settings 路径 | `~/.claude/settings.json`                        | `%USERPROFILE%\.claude\settings.json` | `~/.claude/settings.json`    | 使用 `dirs::home_dir()` + `.claude` 拼接                       |
 
 **关键 Rust 依赖**：
 
@@ -637,7 +637,7 @@ tauri-plugin-autostart = "2"        # 三平台开机自启
 │                                                │
 │  对接配置详情                                    │
 │  ┌────────────────────────────────────────┐    │
-│  │  将写入 ~/.claude/settings.local.json:  │    │
+│  │  将写入 ~/.claude/settings.json:  │    │
 │  │                                        │    │
 │  │  {                                     │    │
 │  │    "env": {                            │    │
@@ -670,7 +670,7 @@ tauri-plugin-autostart = "2"        # 三平台开机自启
 **组件拆分**：
 
 - `ClaudeIntegration`：检测当前连接状态 + 一键操作 + 使用说明
-- 自动检测逻辑：读取 `~/.claude/settings.local.json`，检查 `ANTHROPIC_BASE_URL` 是否指向本地代理端口
+- 自动检测逻辑：读取 `~/.claude/settings.json`，检查 `ANTHROPIC_BASE_URL` 是否指向本地代理端口
 
 ### 2.5 设置页面（Settings）
 
@@ -937,9 +937,9 @@ base64 = "0.22"
 
 ### 阶段 2：OpenAI 格式适配
 
-- [x] 请求转换：Anthropic Messages → OpenAI Chat Completions（~800 行代码）
+- [x] 请求转换：Anthropic Messages → OpenAI Chat Completions（\~800 行代码）
 - [x] 非流式响应转换：OpenAI → Anthropic
-- [x] 流式 SSE 状态机：OpenAI chunks → Anthropic SSE 事件（含多 tool_call 处理）
+- [x] 流式 SSE 状态机：OpenAI chunks → Anthropic SSE 事件（含多 tool\_call 处理）
 - [x] Provider 配置增加 `protocol` 字段（anthropic / openai）
 - [ ] UI 厂商配置弹窗增加协议格式选择 — **待实现**
 
@@ -967,15 +967,16 @@ base64 = "0.22"
 
 **阶段 4 完成度：100%** ✅
 
----
+***
 
 ## 当前项目整体进度：**96%**
 
 ### 已完成核心功能：
+
 - ✅ Tauri 2 + React + SQLite 架构搭建
 - ✅ axum 代理服务器（端口冲突自动递增）
 - ✅ Anthropic 格式直通（旁路 usage 提取）
-- ✅ OpenAI 格式双向转换（请求/响应/SSE 流式状态机，~800 行）
+- ✅ OpenAI 格式双向转换（请求/响应/SSE 流式状态机，\~800 行）
 - ✅ 模型路由匹配（精确/关键词/降级，含单元测试）
 - ✅ SQLite 持久化（providers/request\_logs/daily\_stats）
 - ✅ Tauri Commands（server/provider/log/stats/claude/settings/autostart）
@@ -990,10 +991,11 @@ base64 = "0.22"
 - ✅ 健康检查端点（/health + /v1/models）
 - ✅ 系统托盘（最小化到托盘后台运行）
 - ✅ 开机自启（tauri-plugin-autostart 集成）
-- ✅ 代码优化（移除 dead_code 警告）
+- ✅ 代码优化（移除 dead\_code 警告）
 - ✅ 统一深色主题（移除主题切换功能）
 
 ### 待完成任务（可选）：
+
 1. **打包分发**：macOS .dmg / Windows .msi / Linux .AppImage（已生成 debug 版本）
 2. **生产构建**：运行 `npm run tauri build` 生成 release 版本
 

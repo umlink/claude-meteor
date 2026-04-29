@@ -1,7 +1,21 @@
 {
   "name": "claude-dynamic-meteor",
   "version": "0.1.0",
-  "private": true,
+  "description": "本地代理网关，让 Claude Code 通过 `/model opus|sonnet|haiku` 动态路由到不同 LLM 厂商",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/claude-dynamic-meteor"
+  },
+  "keywords": [
+    "claude",
+    "llm",
+    "proxy",
+    "tauri",
+    "anthropic",
+    "openai"
+  ],
+  "author": "",
   "type": "module",
   "scripts": {
     "dev": "vite",

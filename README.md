@@ -132,4 +132,4 @@ pnpm tauri build
 
 ## 📄 许可证
 
-MIT
+MIT License - see the [LICENSE](./LICENSE) file for details.
