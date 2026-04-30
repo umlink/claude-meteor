@@ -1,21 +1,9 @@
-use crate::adapter::{LlmAdapter, MonitoredSseStream, StreamSummary};
-use crate::config::provider::Protocol;
-use async_trait::async_trait;
+use crate::adapter::{MonitoredSseStream, StreamSummary};
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use futures::Stream;
 use serde_json::Value;
 use tokio::sync::{mpsc, oneshot};
-
-#[allow(dead_code)]
-pub struct AnthropicAdapter;
-
-#[async_trait]
-impl LlmAdapter for AnthropicAdapter {
-    fn protocol(&self) -> Protocol {
-        Protocol::Anthropic
-    }
-}
 
 pub fn monitor_sse_stream(
     stream: impl Stream<Item = Result<Bytes, reqwest::Error>> + Send + 'static,

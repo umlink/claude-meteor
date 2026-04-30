@@ -46,7 +46,7 @@ pub async fn get_stats(db: &DbConn) -> Result<StatsResult, String> {
 
         let today: DailyStats = db
             .query_row(
-                "SELECT DATE('now') as date, COUNT(*) as total_requests, SUM(CASE WHEN status_code >= 400 OR status_code IS NULL THEN 1 ELSE 0 END) as total_errors, SUM(input_tokens) as total_input_tokens, SUM(output_tokens) as total_output_tokens, AVG(CAST(latency_ms AS FLOAT)) as avg_latency_ms FROM request_logs WHERE DATE(timestamp) = DATE('now')",
+                "SELECT DATE('now') as date, COUNT(*) as total_requests, SUM(CASE WHEN status_code >= 400 OR status_code IS NULL THEN 1 ELSE 0 END) as total_errors, SUM(input_tokens) as total_input_tokens, SUM(output_tokens) as total_output_tokens, AVG(CAST(latency_ms AS FLOAT)) as avg_latency_ms FROM request_logs WHERE timestamp >= datetime('now', 'start of day')",
                 [],
                 |row| {
                     Ok(DailyStats {
@@ -70,7 +70,7 @@ pub async fn get_stats(db: &DbConn) -> Result<StatsResult, String> {
 
         let mut stmt = db
             .prepare(
-                "SELECT provider_name, COUNT(*) as requests, SUM(input_tokens), SUM(output_tokens) FROM request_logs WHERE DATE(timestamp) = DATE('now') GROUP BY provider_name",
+                "SELECT provider_name, COUNT(*) as requests, SUM(input_tokens), SUM(output_tokens) FROM request_logs WHERE timestamp >= datetime('now', 'start of day') GROUP BY provider_name",
             )
             .map_err(|e| e.to_string())?;
         let provider_rows = stmt
@@ -90,7 +90,7 @@ pub async fn get_stats(db: &DbConn) -> Result<StatsResult, String> {
 
         let mut stmt = db
             .prepare(
-                "SELECT model, COUNT(*) as requests, SUM(input_tokens), SUM(output_tokens) FROM request_logs WHERE DATE(timestamp) = DATE('now') GROUP BY model",
+                "SELECT model, COUNT(*) as requests, SUM(input_tokens), SUM(output_tokens) FROM request_logs WHERE timestamp >= datetime('now', 'start of day') GROUP BY model",
             )
             .map_err(|e| e.to_string())?;
         let model_rows = stmt
@@ -110,7 +110,7 @@ pub async fn get_stats(db: &DbConn) -> Result<StatsResult, String> {
 
         let mut stmt = db
             .prepare(
-                "SELECT DATE(timestamp) as date, COUNT(*), SUM(CASE WHEN status_code >= 400 OR status_code IS NULL THEN 1 ELSE 0 END), SUM(input_tokens), SUM(output_tokens), AVG(CAST(latency_ms AS FLOAT)) FROM request_logs WHERE DATE(timestamp) >= DATE('now', '-6 days') GROUP BY DATE(timestamp) ORDER BY date",
+                "SELECT DATE(timestamp) as date, COUNT(*), SUM(CASE WHEN status_code >= 400 OR status_code IS NULL THEN 1 ELSE 0 END), SUM(input_tokens), SUM(output_tokens), AVG(CAST(latency_ms AS FLOAT)) FROM request_logs WHERE timestamp >= datetime('now', '-6 days', 'start of day') GROUP BY DATE(timestamp) ORDER BY date",
             )
             .map_err(|e| e.to_string())?;
         let trend_rows = stmt

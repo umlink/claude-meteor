@@ -8,12 +8,13 @@ import type { Provider } from "@/lib/types";
 interface ProviderCardProps {
   provider: Provider;
   togglingId: string | null;
+  disableToggle: boolean;
   onToggle: (provider: Provider) => void;
   onEdit: (provider: Provider) => void;
   onDelete: (provider: Provider) => void;
 }
 
-export function ProviderCard({ provider, togglingId, onToggle, onEdit, onDelete }: ProviderCardProps) {
+export function ProviderCard({ provider, togglingId, disableToggle, onToggle, onEdit, onDelete }: ProviderCardProps) {
   return (
     <div className="signal-panel p-6 hover-lift">
       <div className="flex items-start justify-between gap-5">
@@ -27,7 +28,7 @@ export function ProviderCard({ provider, togglingId, onToggle, onEdit, onDelete 
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-foreground font-semibold text-lg">{provider.name}</span>
               <Badge variant={provider.enabled ? "default" : "secondary"} className="text-xs">
-                {provider.enabled ? "已启用" : "已禁用"}
+                {provider.enabled ? "当前使用中" : "未启用"}
               </Badge>
               <Badge variant="outline" className="text-xs">
                 {provider.protocol.toUpperCase()}
@@ -42,8 +43,8 @@ export function ProviderCard({ provider, togglingId, onToggle, onEdit, onDelete 
           <Switch
             checked={provider.enabled}
             onChange={() => onToggle(provider)}
-            disabled={togglingId === provider.id}
-            aria-label="Toggle provider"
+            disabled={disableToggle || togglingId !== null}
+            aria-label={provider.enabled ? "Current provider" : "Enable provider"}
           />
           <Button
             variant="ghost"
@@ -65,7 +66,7 @@ export function ProviderCard({ provider, togglingId, onToggle, onEdit, onDelete 
       <div className="mt-4 flex flex-wrap gap-2">
         {provider.keyword && (
           <div className="bg-primary/5 border border-primary/20 px-4 py-2">
-            <span className="text-muted-foreground text-xs font-mono">关键词:</span>
+            <span className="text-muted-foreground text-xs font-mono">标签:</span>
             <span className="text-primary text-xs font-mono ml-1.5">{provider.keyword}</span>
           </div>
         )}

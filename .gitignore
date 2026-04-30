@@ -21,6 +21,9 @@ build
 # Tauri
 src-tauri/target
 src-tauri/Cargo.lock
+
+# Build releases - uncomment below if you want to track releases in git
+# releases/
 *.dmg
 *.app
 

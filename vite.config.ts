@@ -12,6 +12,23 @@ export default defineConfig(async () => ({
     },
   },
   clearScreen: false,
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+
+          if (id.includes("recharts")) return "charts";
+          if (id.includes("react-router-dom")) return "router";
+          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("@tauri-apps")) return "tauri";
+          if (id.includes("@base-ui") || id.includes("class-variance-authority")) return "ui-core";
+          if (id.includes("sonner")) return "feedback";
+          return "vendor";
+        },
+      },
+    },
+  },
   server: {
     port: 1420,
     strictPort: true,

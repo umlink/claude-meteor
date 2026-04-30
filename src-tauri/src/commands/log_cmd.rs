@@ -1,4 +1,5 @@
 use crate::db::logs;
+use crate::services::log_service;
 use crate::AppState;
 use std::sync::Arc;
 use tauri::State;
@@ -24,7 +25,7 @@ pub async fn get_logs(
         page_size: page_size.unwrap_or(50),
     };
 
-    let (logs_list, total) = logs::query_logs(&state.db, &filter).await?;
+    let (logs_list, total) = log_service::query_paginated(&state.db, &filter).await?;
 
     Ok(serde_json::json!({
         "logs": logs_list,
@@ -54,46 +55,11 @@ pub async fn export_logs(
         page_size: 50,
     };
 
-    let exported = logs::query_logs_all(&state.db, &filter).await?;
+    let exported = log_service::query_all(&state.db, &filter).await?;
 
     match format.as_str() {
-        "json" => Ok(serde_json::json!({
-            "filename": format!("claude-dynamic-meteor-logs-{}.json", chrono::Local::now().format("%Y%m%d-%H%M%S")),
-            "mime_type": "application/json",
-            "content": serde_json::to_string_pretty(&exported).map_err(|e| e.to_string())?
-        })),
-        "csv" => {
-            let mut lines = vec![
-                "id,request_id,timestamp,model,provider_id,provider_name,protocol,upstream_url,status_code,latency_ms,input_tokens,output_tokens,error_message,is_streaming".to_string()
-            ];
-
-            for log in exported {
-                let escape = |value: &str| format!("\"{}\"", value.replace('"', "\"\""));
-                lines.push(format!(
-                    "{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-                    log.id,
-                    escape(&log.request_id),
-                    escape(&log.timestamp),
-                    escape(&log.model),
-                    escape(&log.provider_id),
-                    escape(&log.provider_name),
-                    escape(&log.protocol),
-                    escape(&log.upstream_url),
-                    log.status_code.map(|v| v.to_string()).unwrap_or_default(),
-                    log.latency_ms.map(|v| v.to_string()).unwrap_or_default(),
-                    log.input_tokens,
-                    log.output_tokens,
-                    escape(log.error_message.as_deref().unwrap_or("")),
-                    log.is_streaming
-                ));
-            }
-
-            Ok(serde_json::json!({
-                "filename": format!("claude-dynamic-meteor-logs-{}.csv", chrono::Local::now().format("%Y%m%d-%H%M%S")),
-                "mime_type": "text/csv;charset=utf-8",
-                "content": lines.join("\n")
-            }))
-        }
+        "json" => log_service::format_json(&exported),
+        "csv" => log_service::format_csv(&exported),
         _ => Err("Unsupported export format".to_string()),
     }
 }

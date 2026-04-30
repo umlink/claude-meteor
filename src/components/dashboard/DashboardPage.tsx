@@ -1,28 +1,13 @@
 
-import { useEffect, useState } from "react";
-import { getStats } from "@/lib/tauri";
-import type { StatsResult } from "@/lib/types";
 import { LayoutDashboard } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useStats } from "@/hooks";
 import { TrendChart } from "./TrendChart";
 import { ProviderDistribution } from "./ProviderDistribution";
 import { ModelDistribution } from "./ModelDistribution";
 
 export function DashboardPage() {
-  const [stats, setStats] = useState<StatsResult | null>(null);
-
-  const refresh = async () => {
-    try {
-      const s = await getStats();
-      setStats(s);
-    } catch {}
-  };
-
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 10000);
-    return () => clearInterval(id);
-  }, []);
+  const { stats } = useStats();
 
   if (!stats) {
     return (

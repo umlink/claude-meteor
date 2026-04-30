@@ -1,15 +1,13 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   disableAutostart,
   enableAutostart,
   exportLogs,
-  getAppSettings,
-  getProxyStatus,
-  isAutostartEnabled,
   updateAppSettings,
 } from "@/lib/tauri";
-import type { AppSettings } from "@/lib/types";
+import type { AppSettings as AppSettingsType } from "@/lib/types";
+import { useAppSettings } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -35,35 +33,26 @@ function SettingRow({
 }
 
 export function SettingsPage() {
-  const [settings, setSettingsState] = useState<AppSettings | null>(null);
-  const [autostartEnabled, setAutostartEnabledState] = useState(false);
-  const [proxyRunning, setProxyRunning] = useState(false);
+  const {
+    settings,
+    setSettings,
+    autostartEnabled,
+    setAutostartEnabled,
+    proxyStatus,
+    loading,
+    error,
+  } = useAppSettings();
   const [autostartLoading, setAutostartLoading] = useState(false);
 
-  const refresh = async () => {
-    const [nextSettings, nextAutostart, nextProxyStatus] = await Promise.all([
-      getAppSettings(),
-      isAutostartEnabled().catch(() => false),
-      getProxyStatus().catch(() => ({ running: false, port: null })),
-    ]);
-    setSettingsState(nextSettings);
-    setAutostartEnabledState(nextAutostart);
-    setProxyRunning(nextProxyStatus.running);
-  };
+  const proxyRunning = proxyStatus?.running ?? false;
 
-  useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  const applySettings = async (nextSettings: AppSettings) => {
+  const applySettings = async (nextSettings: AppSettingsType) => {
     if (settings && proxyRunning && nextSettings.proxy_port !== settings.proxy_port) {
       toast.error("请先停止代理，再修改端口");
       return;
     }
 
-    setSettingsState(nextSettings);
+    setSettings(nextSettings);
     try {
       await updateAppSettings(nextSettings);
     } catch (error) {
@@ -79,7 +68,7 @@ export function SettingsPage() {
       } else {
         await disableAutostart();
       }
-      setAutostartEnabledState(enabled);
+      setAutostartEnabled(enabled);
       toast.success("开机启动已更新");
     } catch (error) {
       toast.error(`启动设置失败: ${error}`);
@@ -97,12 +86,14 @@ export function SettingsPage() {
     }
   };
 
-  if (!settings) {
+  if (loading || !settings) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6 fade-in">
         <div className="border-b border-slate-200 pb-5">
           <h1 className="text-2xl font-semibold tracking-normal text-slate-950">设置</h1>
-          <p className="mt-2 text-sm text-slate-500">正在加载当前配置...</p>
+          <p className="mt-2 text-sm text-slate-500">
+            {error ? `加载配置失败: ${error}` : "正在加载当前配置..."}
+          </p>
         </div>
       </div>
     );

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -13,15 +13,13 @@ import {
   Zap,
 } from "lucide-react";
 import {
-  getProxyStatus,
-  getStats,
   startProxy,
   stopProxy,
   injectClaudeConfig,
   revertClaudeConfig,
 } from "@/lib/tauri";
 import { Button } from "@/components/ui/button";
-import type { ProxyStatus, StatsResult } from "@/lib/types";
+import { useProxyStatus, useStats } from "@/hooks";
 import { toast } from "sonner";
 
 const navItems = [
@@ -47,31 +45,9 @@ const formatMetric = (value: number | undefined, suffix = "") => {
 };
 
 export function TopNav() {
-  const [status, setStatus] = useState<ProxyStatus | null>(null);
-  const [stats, setStats] = useState<StatsResult | null>(null);
+  const { status, refresh: refreshStatus } = useProxyStatus();
+  const { stats } = useStats();
   const [isToggling, setIsToggling] = useState(false);
-
-  useEffect(() => {
-    const poll = () => {
-      getProxyStatus()
-        .then(setStatus)
-        .catch(() => setStatus(null));
-    };
-    poll();
-    const id = setInterval(poll, 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const poll = () => {
-      getStats()
-        .then(setStats)
-        .catch(() => setStats(null));
-    };
-    poll();
-    const id = setInterval(poll, 10000);
-    return () => clearInterval(id);
-  }, []);
 
   const handleToggle = async () => {
     if (isToggling) return;
@@ -84,7 +60,7 @@ export function TopNav() {
         await Promise.all([startProxy(), injectClaudeConfig()]);
         toast.success("代理已启动，Claude 配置已应用");
       }
-      await getProxyStatus().then(setStatus);
+      await refreshStatus();
     } catch (error) {
       toast.error(`操作失败: ${error}`);
     } finally {

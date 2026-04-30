@@ -1,30 +1,24 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getStats } from "@/lib/tauri";
 import type { StatsResult } from "@/lib/types";
 
-export function useStats() {
+export function useStats(intervalMs = 10000) {
   const [stats, setStats] = useState<StatsResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
-    setLoading(true);
-    setError(null);
+  const refresh = useCallback(async () => {
     try {
-      const result = await getStats();
-      setStats(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch stats");
-    } finally {
-      setLoading(false);
+      const s = await getStats();
+      setStats(s);
+    } catch {
+      setStats(null);
     }
-  };
-
-  useEffect(() => {
-    fetchStats();
-    const interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
   }, []);
 
-  return { stats, loading, error, refresh: fetchStats };
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, intervalMs);
+    return () => clearInterval(id);
+  }, [refresh, intervalMs]);
+
+  return { stats, refresh };
 }

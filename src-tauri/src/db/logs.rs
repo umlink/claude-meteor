@@ -69,42 +69,68 @@ pub async fn insert_log(db: &DbConn, log: &RequestLog) -> Result<(), String> {
     .map_err(|e| e.to_string())?
 }
 
+const LOG_COLUMNS: &str = "id, request_id, timestamp, model, provider_id, provider_name, protocol, upstream_url, status_code, latency_ms, input_tokens, output_tokens, error_message, is_streaming";
+
+fn build_where_clause(filter: &LogFilter) -> (String, Vec<Box<dyn rusqlite::types::ToSql>>) {
+    let mut where_clauses = Vec::new();
+    let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+
+    if let Some(ref pid) = filter.provider_id {
+        where_clauses.push(format!("provider_id = ?{}", params.len() + 1));
+        params.push(Box::new(pid.clone()));
+    }
+    if let Some(ref m) = filter.model {
+        where_clauses.push(format!("model LIKE ?{}", params.len() + 1));
+        params.push(Box::new(format!("%{}%", m)));
+    }
+    if let Some(sc) = filter.status_code {
+        where_clauses.push(format!("status_code = ?{}", params.len() + 1));
+        params.push(Box::new(sc));
+    }
+    if let Some(ref df) = filter.date_from {
+        where_clauses.push(format!("timestamp >= ?{}", params.len() + 1));
+        params.push(Box::new(df.clone()));
+    }
+    if let Some(ref dt) = filter.date_to {
+        where_clauses.push(format!("timestamp <= ?{}", params.len() + 1));
+        params.push(Box::new(dt.clone()));
+    }
+
+    let where_sql = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", where_clauses.join(" AND "))
+    };
+
+    (where_sql, params)
+}
+
+fn row_to_log(row: &rusqlite::Row<'_>) -> rusqlite::Result<RequestLog> {
+    Ok(RequestLog {
+        id: row.get(0)?,
+        request_id: row.get(1)?,
+        timestamp: row.get(2)?,
+        model: row.get(3)?,
+        provider_id: row.get(4)?,
+        provider_name: row.get(5)?,
+        protocol: row.get(6)?,
+        upstream_url: row.get(7)?,
+        status_code: row.get(8)?,
+        latency_ms: row.get(9)?,
+        input_tokens: row.get(10)?,
+        output_tokens: row.get(11)?,
+        error_message: row.get(12)?,
+        is_streaming: row.get(13)?,
+    })
+}
+
 pub async fn query_logs(db: &DbConn, filter: &LogFilter) -> Result<(Vec<RequestLog>, u32), String> {
     let db = db.clone();
     let filter = filter.clone();
 
     tokio::task::spawn_blocking(move || {
         let db = db.blocking_lock();
-
-        let mut where_clauses = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
-
-        if let Some(ref pid) = filter.provider_id {
-            where_clauses.push(format!("provider_id = ?{}", params.len() + 1));
-            params.push(Box::new(pid.clone()));
-        }
-        if let Some(ref m) = filter.model {
-            where_clauses.push(format!("model LIKE ?{}", params.len() + 1));
-            params.push(Box::new(format!("%{}%", m)));
-        }
-        if let Some(sc) = filter.status_code {
-            where_clauses.push(format!("status_code = ?{}", params.len() + 1));
-            params.push(Box::new(sc));
-        }
-        if let Some(ref df) = filter.date_from {
-            where_clauses.push(format!("timestamp >= ?{}", params.len() + 1));
-            params.push(Box::new(df.clone()));
-        }
-        if let Some(ref dt) = filter.date_to {
-            where_clauses.push(format!("timestamp <= ?{}", params.len() + 1));
-            params.push(Box::new(dt.clone()));
-        }
-
-        let where_sql = if where_clauses.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", where_clauses.join(" AND "))
-        };
+        let (where_sql, params) = build_where_clause(&filter);
 
         let count_sql = format!("SELECT COUNT(*) FROM request_logs {}", where_sql);
         let total: u32 = db
@@ -117,8 +143,11 @@ pub async fn query_logs(db: &DbConn, filter: &LogFilter) -> Result<(Vec<RequestL
 
         let offset = (filter.page.saturating_sub(1)) * filter.page_size;
         let query_sql = format!(
-            "SELECT id, request_id, timestamp, model, provider_id, provider_name, protocol, upstream_url, status_code, latency_ms, input_tokens, output_tokens, error_message, is_streaming FROM request_logs {} ORDER BY id DESC LIMIT ?{} OFFSET ?{}",
-            where_sql, params.len() + 1, params.len() + 2
+            "SELECT {} FROM request_logs {} ORDER BY id DESC LIMIT ?{} OFFSET ?{}",
+            LOG_COLUMNS,
+            where_sql,
+            params.len() + 1,
+            params.len() + 2
         );
 
         let mut all_params: Vec<Box<dyn rusqlite::types::ToSql>> = params;
@@ -129,24 +158,7 @@ pub async fn query_logs(db: &DbConn, filter: &LogFilter) -> Result<(Vec<RequestL
         let rows = stmt
             .query_map(
                 rusqlite::params_from_iter(all_params.iter().map(|p| p.as_ref())),
-                |row| {
-                    Ok(RequestLog {
-                        id: row.get(0)?,
-                        request_id: row.get(1)?,
-                        timestamp: row.get(2)?,
-                        model: row.get(3)?,
-                        provider_id: row.get(4)?,
-                        provider_name: row.get(5)?,
-                        protocol: row.get(6)?,
-                        upstream_url: row.get(7)?,
-                        status_code: row.get(8)?,
-                        latency_ms: row.get(9)?,
-                        input_tokens: row.get(10)?,
-                        output_tokens: row.get(11)?,
-                        error_message: row.get(12)?,
-                        is_streaming: row.get(13)?,
-                    })
-                },
+                row_to_log,
             )
             .map_err(|e| e.to_string())?;
 
@@ -167,64 +179,18 @@ pub async fn query_logs_all(db: &DbConn, filter: &LogFilter) -> Result<Vec<Reque
 
     tokio::task::spawn_blocking(move || {
         let db = db.blocking_lock();
-
-        let mut where_clauses = Vec::new();
-        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
-
-        if let Some(ref pid) = filter.provider_id {
-            where_clauses.push(format!("provider_id = ?{}", params.len() + 1));
-            params.push(Box::new(pid.clone()));
-        }
-        if let Some(ref m) = filter.model {
-            where_clauses.push(format!("model LIKE ?{}", params.len() + 1));
-            params.push(Box::new(format!("%{}%", m)));
-        }
-        if let Some(sc) = filter.status_code {
-            where_clauses.push(format!("status_code = ?{}", params.len() + 1));
-            params.push(Box::new(sc));
-        }
-        if let Some(ref df) = filter.date_from {
-            where_clauses.push(format!("timestamp >= ?{}", params.len() + 1));
-            params.push(Box::new(df.clone()));
-        }
-        if let Some(ref dt) = filter.date_to {
-            where_clauses.push(format!("timestamp <= ?{}", params.len() + 1));
-            params.push(Box::new(dt.clone()));
-        }
-
-        let where_sql = if where_clauses.is_empty() {
-            String::new()
-        } else {
-            format!("WHERE {}", where_clauses.join(" AND "))
-        };
+        let (where_sql, params) = build_where_clause(&filter);
 
         let query_sql = format!(
-            "SELECT id, request_id, timestamp, model, provider_id, provider_name, protocol, upstream_url, status_code, latency_ms, input_tokens, output_tokens, error_message, is_streaming FROM request_logs {} ORDER BY id DESC",
-            where_sql
+            "SELECT {} FROM request_logs {} ORDER BY id DESC",
+            LOG_COLUMNS, where_sql
         );
 
         let mut stmt = db.prepare(&query_sql).map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map(
                 rusqlite::params_from_iter(params.iter().map(|p| p.as_ref())),
-                |row| {
-                    Ok(RequestLog {
-                        id: row.get(0)?,
-                        request_id: row.get(1)?,
-                        timestamp: row.get(2)?,
-                        model: row.get(3)?,
-                        provider_id: row.get(4)?,
-                        provider_name: row.get(5)?,
-                        protocol: row.get(6)?,
-                        upstream_url: row.get(7)?,
-                        status_code: row.get(8)?,
-                        latency_ms: row.get(9)?,
-                        input_tokens: row.get(10)?,
-                        output_tokens: row.get(11)?,
-                        error_message: row.get(12)?,
-                        is_streaming: row.get(13)?,
-                    })
-                },
+                row_to_log,
             )
             .map_err(|e| e.to_string())?;
 

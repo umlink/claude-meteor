@@ -47,12 +47,10 @@ pub async fn stop_proxy(state: State<'_, Arc<AppState>>) -> Result<(), String> {
 #[tauri::command]
 pub async fn proxy_status(state: State<'_, Arc<AppState>>) -> Result<ProxyStatus, String> {
     let handle = state.proxy_handle.lock().await;
-    let running = handle.is_some();
-    let port = if running {
-        Some(*state.proxy_port.lock().await)
-    } else {
-        None
-    };
+    let port = handle.as_ref().map(|h| h.port);
 
-    Ok(ProxyStatus { running, port })
+    Ok(ProxyStatus {
+        running: port.is_some(),
+        port,
+    })
 }

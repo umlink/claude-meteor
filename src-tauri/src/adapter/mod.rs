@@ -1,17 +1,10 @@
 pub mod anthropic;
 pub mod openai;
 
-use async_trait::async_trait;
 use bytes::Bytes;
 use futures::Stream;
 use std::pin::Pin;
 use tokio::sync::oneshot;
-
-#[async_trait]
-#[allow(dead_code)]
-pub trait LlmAdapter: Send + Sync {
-    fn protocol(&self) -> crate::config::provider::Protocol;
-}
 
 #[derive(Debug, Clone)]
 pub struct StreamSummary {

@@ -3,8 +3,8 @@ mod claude;
 mod commands;
 mod config;
 mod db;
-mod monitor;
 mod proxy;
+mod services;
 mod tray;
 
 use std::sync::Arc;
@@ -15,6 +15,7 @@ pub struct AppState {
     pub db: Arc<Mutex<rusqlite::Connection>>,
     pub proxy_handle: Arc<Mutex<Option<proxy::server::ProxyHandle>>>,
     pub proxy_port: Arc<Mutex<u16>>,
+    pub http_client: reqwest::Client,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -42,6 +43,10 @@ pub fn run() {
                 db: Arc::new(Mutex::new(conn)),
                 proxy_handle: Arc::new(Mutex::new(None)),
                 proxy_port: Arc::new(Mutex::new(settings.proxy_port)),
+                http_client: reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(120))
+                    .build()
+                    .expect("failed to build http client"),
             });
 
             app.manage(state.clone());

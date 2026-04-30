@@ -12,12 +12,9 @@ reqwest = { version = "0.12", features = ["stream", "json"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors"] }
 tokio-stream = "0.1"
 futures = "0.3"
 uuid = { version = "1", features = ["v4"] }
-async-trait = "0.1"
 rusqlite = { version = "0.31", features = ["bundled"] }
 dirs = "5"
 aes-gcm = "0.10"

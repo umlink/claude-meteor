@@ -62,7 +62,7 @@ export function ProviderDialog({
             </div>
             <div className="flex min-w-0 flex-col gap-2">
               <Label htmlFor="keyword" className="text-sm font-medium">
-                关键词
+                标签分组
               </Label>
               <Select
                 value={form.keyword}
@@ -72,7 +72,7 @@ export function ProviderDialog({
                 }}
               >
                 <SelectTrigger id="keyword" className="w-full min-w-0">
-                  <SelectValue placeholder="选择关键词" />
+                  <SelectValue placeholder="选择标签分组" />
                 </SelectTrigger>
                 <SelectContent>
                   {keywordOptions.map((keyword) => (
@@ -82,6 +82,9 @@ export function ProviderDialog({
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-muted-foreground text-xs">
+                仅用于列表分组展示，不参与 `/model` 路由。
+              </p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
@@ -153,8 +156,11 @@ export function ProviderDialog({
               id="model_mapping"
               value={form.model_mapping}
               onChange={(e) => onChange({ ...form, model_mapping: e.target.value })}
-              placeholder="例如：claude-4.7（可选）"
+              placeholder="例如：gpt-4.1 / claude-sonnet-4-5（可选）"
             />
+            <p className="text-muted-foreground text-xs">
+              当前启用哪个提供商，请求就会直接走哪个提供商；这里仅指定上游实际模型名。
+            </p>
           </div>
         </div>
         <DialogFooter className="flex gap-3 mt-6">

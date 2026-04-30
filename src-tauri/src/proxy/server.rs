@@ -2,7 +2,6 @@ use crate::AppState;
 use axum::Router;
 use std::sync::Arc;
 use tokio::net::TcpListener as TokioTcpListener;
-use tower_http::cors::CorsLayer;
 
 pub struct ProxyHandle {
     pub shutdown: tokio::task::JoinHandle<()>,
@@ -39,7 +38,7 @@ pub async fn start_proxy_server(state: Arc<AppState>, port: u16) -> Result<Proxy
             "/health",
             axum::routing::get(crate::proxy::handler::handle_health),
         )
-        .layer(CorsLayer::permissive())
+        .layer(axum::extract::DefaultBodyLimit::max(10 * 1024 * 1024))
         .with_state(state);
 
     let listener = TokioTcpListener::bind(format!("127.0.0.1:{}", actual_port))

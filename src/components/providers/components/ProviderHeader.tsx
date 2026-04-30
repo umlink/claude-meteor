@@ -17,7 +17,7 @@ export function ProviderHeader({ providersCount, enabledCount, onAddClick }: Pro
       </div>
       <div className="flex items-center gap-4">
         <div className="text-muted-foreground text-sm">
-          {providersCount} 总计, {enabledCount} 已启用
+          {providersCount} 总计, {enabledCount} 当前使用中
         </div>
         <Button
           onClick={onAddClick}

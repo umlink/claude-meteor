@@ -1,30 +1,32 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getLogs } from "@/lib/tauri";
 import type { RequestLog } from "@/lib/types";
 
-interface UseLogsParams {
-  provider_id?: string;
-  model?: string;
-  status_code?: number;
-  date_from?: string;
-  date_to?: string;
-  page?: number;
-  page_size?: number;
+interface UseLogsOptions {
+  pageSize?: number;
 }
 
-export function useLogs(params?: UseLogsParams) {
+export function useLogs(options: UseLogsOptions = {}) {
+  const pageSize = options.pageSize ?? 16;
   const [logs, setLogs] = useState<RequestLog[]>([]);
+  const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(params?.page || 1);
-  const [pageSize, setPageSize] = useState(params?.page_size || 20);
-  const [loading, setLoading] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
-    setLoading(true);
-    setError(null);
+  const refresh = useCallback(async () => {
     try {
-      const result = await getLogs({ ...params, page, page_size: pageSize });
+      setError(null);
+      const result = await getLogs({
+        provider_id: selectedProviderId || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        page,
+        page_size: pageSize,
+      });
       setLogs(result.logs);
       setTotal(result.total);
     } catch (err) {
@@ -32,11 +34,35 @@ export function useLogs(params?: UseLogsParams) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, page, pageSize, selectedProviderId]);
 
   useEffect(() => {
-    fetchLogs();
-  }, [page, pageSize, params?.provider_id, params?.model, params?.status_code, params?.date_from, params?.date_to]);
+    refresh();
+  }, [refresh]);
 
-  return { logs, total, page, pageSize, loading, error, setPage, setPageSize, refresh: fetchLogs };
+  const resetFilters = useCallback(() => {
+    setSelectedProviderId("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(1);
+  }, []);
+
+  return {
+    logs,
+    page,
+    setPage,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    selectedProviderId,
+    setSelectedProviderId,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    pageSize,
+    loading,
+    error,
+    refresh,
+    resetFilters,
+  };
 }
